@@ -1,0 +1,51 @@
+# ==============================================================================
+# Docker Compose for FerretDB and Redis
+# ==============================================================================
+# Starts FerretDB (with PostgreSQL backend) and Redis cache server.
+#
+# Quick Start:
+#   docker compose up -d
+#
+# FerretDB MongoDB-compatible URI: mongodb://127.0.0.1:27017/
+# Redis URL: redis://127.0.0.1:6379/0
+# ==============================================================================
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ferretdb-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ferretdb
+      POSTGRES_USER: ferretdb
+      POSTGRES_PASSWORD: ferretdb_password
+    volumes:
+      - ferretdb_pgdata:/var/lib/postgresql/data
+    ports:
+      # Map to port 5433 on host to avoid conflict with existing host PostgreSQL
+      - "5433:5432"
+
+  ferretdb:
+    image: ghcr.io/ferretdb/ferretdb:latest
+    container_name: ferretdb
+    restart: unless-stopped
+    ports:
+      # MongoDB-compatible wire protocol port
+      - "27017:27017"
+    environment:
+      FERRETDB_POSTGRESQL_URL: postgres://ferretdb:ferretdb_password@postgres:5432/ferretdb
+    depends_on:
+      - postgres
+
+  redis:
+    image: redis:7-alpine
+    container_name: tracker-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  ferretdb_pgdata:
+  redis_data:

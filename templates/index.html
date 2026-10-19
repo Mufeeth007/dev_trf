@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Developer Activity Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Top Navigation / Header -->
+    <header class="app-header">
+        <div class="header-container">
+            <div class="logo-area">
+                <div class="logo-icon">💻</div>
+                <div>
+                    <h1 class="app-title">Developer Activity Tracker</h1>
+                    <p class="app-subtitle">Powered by Python Flask, FerretDB &amp; Redis Cache</p>
+                </div>
+            </div>
+
+            <div class="system-status-container">
+                <!-- FerretDB Status Indicator -->
+                <div class="status-pill" id="ferretdb-status-pill" title="FerretDB Main Database Status">
+                    <span class="status-dot dot-checking" id="ferretdb-dot"></span>
+                    <span class="status-label">FerretDB:</span>
+                    <span class="status-val" id="ferretdb-val">Checking...</span>
+                </div>
+
+                <!-- Redis Status Indicator -->
+                <div class="status-pill" id="redis-status-pill" title="Redis Cache Status">
+                    <span class="status-dot dot-checking" id="redis-dot"></span>
+                    <span class="status-label">Redis Cache:</span>
+                    <span class="status-val" id="redis-val">Checking...</span>
+                </div>
+
+                <!-- Manual Refresh Button -->
+                <button type="button" class="btn-refresh" id="btn-global-refresh" title="Refresh Dashboard">
+                    🔄 Refresh
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-layout">
+        <!-- Notification Toast Container -->
+        <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+        <!-- Dashboard Summary Cards -->
+        <section class="stats-section" aria-label="Dashboard Statistics">
+            <div class="stat-card card-total">
+                <div class="stat-icon">📊</div>
+                <div class="stat-info">
+                    <span class="stat-label">Total Activities</span>
+                    <span class="stat-value" id="stat-total">0</span>
+                </div>
+            </div>
+
+            <div class="stat-card card-success">
+                <div class="stat-icon">✅</div>
+                <div class="stat-info">
+                    <span class="stat-label">Successful</span>
+                    <span class="stat-value" id="stat-success">0</span>
+                </div>
+            </div>
+
+            <div class="stat-card card-pending">
+                <div class="stat-icon">⏳</div>
+                <div class="stat-info">
+                    <span class="stat-label">Pending</span>
+                    <span class="stat-value" id="stat-pending">0</span>
+                </div>
+            </div>
+
+            <div class="stat-card card-failed">
+                <div class="stat-icon">❌</div>
+                <div class="stat-info">
+                    <span class="stat-label">Failed</span>
+                    <span class="stat-value" id="stat-failed">0</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Content Grid -->
+        <div class="content-grid">
+            <!-- Left Side: Add / Edit Activity Form -->
+            <section class="card form-card" id="activity-form-card">
+                <div class="card-header">
+                    <h2 class="card-title" id="form-heading">
+                        <span id="form-action-icon">➕</span>
+                        <span id="form-action-title">Add New Activity</span>
+                    </h2>
+                    <span class="badge badge-outline" id="form-mode-badge">New</span>
+                </div>
+
+                <form id="activity-form" novalidate>
+                    <input type="hidden" id="edit-activity-id" value="">
+
+                    <!-- Project Name -->
+                    <div class="form-group">
+                        <label for="project_name">Project Name <span class="required-star">*</span></label>
+                        <input
+                            type="text"
+                            id="project_name"
+                            name="project_name"
+                            placeholder="e.g. E-Commerce Platform, Auth API"
+                            required
+                            maxlength="100"
+                        >
+                        <div class="field-error" id="err-project_name"></div>
+                    </div>
+
+                    <!-- Activity Title -->
+                    <div class="form-group">
+                        <label for="title">Activity Title <span class="required-star">*</span></label>
+                        <input
+                            type="text"
+                            id="title"
+                            name="title"
+                            list="activity-suggestions"
+                            placeholder="e.g. Bug fixed, Code updated..."
+                            required
+                            maxlength="150"
+                        >
+                        <datalist id="activity-suggestions">
+                            <option value="Project created">
+                            <option value="Database created">
+                            <option value="Code updated">
+                            <option value="Testing completed">
+                            <option value="Bug fixed">
+                            <option value="Deployment completed">
+                            <option value="API integrated">
+                            <option value="Code review completed">
+                        </datalist>
+                        <div class="field-error" id="err-title"></div>
+                    </div>
+
+                    <!-- Developer Name -->
+                    <div class="form-group">
+                        <label for="developer_name">Developer Name <span class="required-star">*</span></label>
+                        <input
+                            type="text"
+                            id="developer_name"
+                            name="developer_name"
+                            placeholder="e.g. Alex Rivera, Jordan Smith"
+                            required
+                            maxlength="80"
+                        >
+                        <div class="field-error" id="err-developer_name"></div>
+                    </div>
+
+                    <!-- Status -->
+                    <div class="form-group">
+                        <label for="status">Status <span class="required-star">*</span></label>
+                        <select id="status" name="status" required>
+                            <option value="Success">Success</option>
+                            <option value="Pending" selected>Pending</option>
+                            <option value="Failed">Failed</option>
+                        </select>
+                        <div class="field-error" id="err-status"></div>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="form-group">
+                        <label for="description">Description <span class="required-star">*</span></label>
+                        <textarea
+                            id="description"
+                            name="description"
+                            rows="4"
+                            placeholder="Provide details of the activity, commit notes, or error reports..."
+                            required
+                            maxlength="1000"
+                        ></textarea>
+                        <div class="field-error" id="err-description"></div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary" id="btn-submit-form">
+                            <span id="btn-submit-text">Record Activity</span>
+                        </button>
+                        <button type="button" class="btn btn-secondary" id="btn-cancel-edit" style="display: none;">
+                            Cancel Edit
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Right Side: Activity History Table & Search / Filter Toolbar -->
+            <section class="card table-card">
+                <div class="card-header table-header-flex">
+                    <div>
+                        <h2 class="card-title">Activity History</h2>
+                        <p class="card-description">Permanent storage in FerretDB, fast-cached via Redis</p>
+                    </div>
+
+                    <!-- Cache Source Indicator Badge -->
+                    <div class="cache-badge" id="cache-source-badge" title="Data delivery layer">
+                        <span id="cache-icon">⚡</span>
+                        <span id="cache-source-text">Redis Cached</span>
+                    </div>
+                </div>
+
+                <!-- Filter & Search Toolbar -->
+                <div class="filter-toolbar">
+                    <!-- Search Input -->
+                    <div class="search-box">
+                        <span class="search-icon">🔍</span>
+                        <input
+                            type="text"
+                            id="search-input"
+                            placeholder="Search by project name, title, or developer..."
+                        >
+                        <button type="button" id="btn-clear-search" class="btn-clear" style="display:none;" title="Clear search">✕</button>
+                    </div>
+
+                    <!-- Status Filter Dropdown -->
+                    <div class="filter-control">
+                        <label for="status-filter">Status:</label>
+                        <select id="status-filter">
+                            <option value="All">All Statuses</option>
+                            <option value="Success">Success</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Failed">Failed</option>
+                        </select>
+                    </div>
+
+                    <!-- Sort Order Dropdown -->
+                    <div class="filter-control">
+                        <label for="sort-order">Sort By:</label>
+                        <select id="sort-order">
+                            <option value="newest" selected>Newest First</option>
+                            <option value="oldest">Oldest First</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Database Connection Alert (shown when FerretDB is offline) -->
+                <div id="db-error-banner" class="alert-banner alert-danger" style="display: none;">
+                    <strong>Database Connection Error:</strong>
+                    <span id="db-error-message">FerretDB is currently unreachable. Make sure the FerretDB service is running.</span>
+                </div>
+
+                <!-- Activities Table Container -->
+                <div class="table-responsive">
+                    <table class="activity-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 140px;">Activity ID</th>
+                                <th>Project Name</th>
+                                <th>Activity Title</th>
+                                <th>Developer</th>
+                                <th style="width: 110px;">Status</th>
+                                <th style="width: 160px;">Created Date/Time</th>
+                                <th>Description</th>
+                                <th style="width: 130px; text-align: center;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="activities-table-body">
+                            <!-- Rows dynamically populated by script.js -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Empty State Message -->
+                <div id="empty-state" class="empty-state" style="display: none;">
+                    <div class="empty-icon">📂</div>
+                    <h3 class="empty-title">No activities found</h3>
+                    <p class="empty-text" id="empty-state-message">
+                        No activities have been recorded yet. Use the form to add your first activity!
+                    </p>
+                </div>
+
+                <!-- Loading State Spinner -->
+                <div id="loading-state" class="loading-state">
+                    <div class="spinner"></div>
+                    <p>Loading activities from database...</p>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Delete Confirmation Modal Dialog -->
+    <div id="delete-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-title" style="display: none;">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3 id="modal-title" class="modal-title">Confirm Deletion</h3>
+                <button type="button" class="modal-close" id="btn-modal-close" aria-label="Close modal">✕</button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to permanently delete this developer activity?</p>
+                <div class="modal-item-preview">
+                    <div><strong>Project:</strong> <span id="del-preview-project"></span></div>
+                    <div><strong>Activity:</strong> <span id="del-preview-title"></span></div>
+                    <div><strong>ID:</strong> <code id="del-preview-id"></code></div>
+                </div>
+                <p class="modal-warning-text">⚠️ This record will be permanently removed from FerretDB.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="btn-modal-cancel">Cancel</button>
+                <button type="button" class="btn btn-danger" id="btn-modal-confirm-delete">Delete Activity</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+        <p>Developer Activity Tracker &bull; FerretDB (Permanent Store) + Redis (Cache Layer)</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
